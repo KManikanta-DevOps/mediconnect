@@ -1,0 +1,9 @@
+name: notification-service
+image:
+  repository: ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/mediconnect/notification-service
+  tag: latest
+serviceAccount: { roleArn: "arn:aws:iam::ACCOUNT_ID:role/mediconnect-dev-notification" }
+env:
+  AWS_REGION: us-east-1
+  REMINDER_QUEUE_URL: https://sqs.us-east-1.amazonaws.com/ACCOUNT_ID/mediconnect-dev-reminders
+  SES_SENDER: no-reply@example.com

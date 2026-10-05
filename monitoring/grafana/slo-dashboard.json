@@ -1,0 +1,20 @@
+{
+  "title": "MediConnect SLO",
+  "uid": "mediconnect-slo",
+  "schemaVersion": 39,
+  "time": { "from": "now-24h", "to": "now" },
+  "panels": [
+    { "type": "stat", "title": "Availability (30d)", "gridPos": {"x":0,"y":0,"w":6,"h":5},
+      "targets": [{ "expr": "avg_over_time(mediconnect:availability:ratio_5m[30d]) * 100" }],
+      "fieldConfig": { "defaults": { "unit": "percent", "thresholds": { "steps": [{"color":"red","value":null},{"color":"green","value":99.9}] } } } },
+    { "type": "timeseries", "title": "Request rate by service", "gridPos": {"x":6,"y":0,"w":9,"h":8},
+      "targets": [{ "expr": "sum by (service) (rate(http_requests_total{namespace=\"mediconnect\"}[5m]))" }] },
+    { "type": "timeseries", "title": "p95 latency", "gridPos": {"x":15,"y":0,"w":9,"h":8},
+      "targets": [{ "expr": "histogram_quantile(0.95, sum by (le, service) (rate(http_request_duration_seconds_bucket{namespace=\"mediconnect\"}[5m])))" }],
+      "fieldConfig": { "defaults": { "unit": "s" } } },
+    { "type": "timeseries", "title": "5xx error ratio", "gridPos": {"x":0,"y":8,"w":12,"h":8},
+      "targets": [{ "expr": "1 - mediconnect:availability:ratio_5m" }] },
+    { "type": "stat", "title": "Reminder emails sent (24h)", "gridPos": {"x":12,"y":8,"w":6,"h":8},
+      "targets": [{ "expr": "sum(increase(reminders_sent_total[24h]))" }] }
+  ]
+}

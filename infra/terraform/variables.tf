@@ -1,0 +1,11 @@
+variable "region" { default = "us-east-1" }
+variable "vpc_cidr" { default = "10.0.0.0/16" }
+variable "node_instance_types" { default = ["t3.medium"] }
+variable "node_capacity_type" { default = "ON_DEMAND" } # SPOT for dev
+variable "node_min" { default = 2 }
+variable "node_max" { default = 4 }
+variable "db_instance_class" { default = "db.t4g.micro" }
+variable "db_multi_az" { default = false }
+variable "alert_email" { type = string }
+variable "ses_sender" { type = string }
+variable "github_repo" { default = "YOUR_GH_USER/mediconnect" }

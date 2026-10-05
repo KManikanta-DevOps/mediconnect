@@ -1,0 +1,26 @@
+name: service
+image:
+  repository: ""        # <acct>.dkr.ecr.<region>.amazonaws.com/mediconnect/<service>
+  tag: latest           # bumped by CI (GitOps)
+replicaCount: 2
+port: 8000
+serviceAccount:
+  roleArn: ""           # IRSA role from Terraform output
+env: {}
+secretEnv: {}           # name -> {secretName, key}  (synced by External Secrets / CSI)
+resources:
+  requests: { cpu: 100m, memory: 128Mi }
+  limits:   { cpu: 500m, memory: 256Mi }
+hpa:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPU: 70
+ingress:
+  enabled: false
+  host: ""
+  path: /
+  certificateArn: ""
+networkPolicy:
+  enabled: true
+  allowFromNamespaces: [ingress, monitoring]

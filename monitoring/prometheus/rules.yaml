@@ -1,0 +1,25 @@
+groups:
+  - name: mediconnect-slo
+    rules:
+      - record: mediconnect:availability:ratio_5m
+        expr: |
+          sum(rate(http_requests_total{namespace="mediconnect",status!~"5.."}[5m]))
+          / sum(rate(http_requests_total{namespace="mediconnect"}[5m]))
+      - alert: SLOFastBurn
+        expr: (1 - mediconnect:availability:ratio_5m) > (14.4 * 0.001)
+        for: 5m
+        labels: { severity: page }
+        annotations: { summary: "Burning 99.9% error budget 14x too fast" }
+      - alert: HighLatencyP95
+        expr: histogram_quantile(0.95, sum by (le, handler) (rate(http_request_duration_seconds_bucket{namespace="mediconnect"}[5m]))) > 0.5
+        for: 10m
+        labels: { severity: warn }
+        annotations: { summary: "p95 latency > 500ms on {{ $labels.handler }}" }
+      - alert: PodCrashLooping
+        expr: increase(kube_pod_container_status_restarts_total{namespace="mediconnect"}[15m]) > 3
+        labels: { severity: warn }
+        annotations: { summary: "{{ $labels.pod }} restarting" }
+      - alert: ReminderFailures
+        expr: increase(reminders_failed_total[15m]) > 5
+        labels: { severity: warn }
+        annotations: { summary: "Reminder emails failing" }

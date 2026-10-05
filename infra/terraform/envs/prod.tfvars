@@ -1,0 +1,9 @@
+vpc_cidr            = "10.30.0.0/16"
+node_instance_types = ["m6i.large"]
+node_capacity_type  = "ON_DEMAND"
+node_min            = 3
+node_max            = 8
+db_instance_class   = "db.m6g.large"
+db_multi_az         = true
+alert_email         = "you@example.com"
+ses_sender          = "no-reply@example.com"

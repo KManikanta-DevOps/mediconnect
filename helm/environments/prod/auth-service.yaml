@@ -1,0 +1,9 @@
+name: auth-service
+image:
+  repository: ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/mediconnect/auth-service
+  tag: latest
+env:
+  AWS_REGION: us-east-1
+  COGNITO_USER_POOL_ID: us-east-1_CHANGEME
+  COGNITO_CLIENT_ID: CHANGEME
+ingress: { enabled: true, host: dev.mediconnect.example.com, path: /auth, certificateArn: "arn:aws:acm:..." }

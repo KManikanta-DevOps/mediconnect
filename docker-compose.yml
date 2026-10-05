@@ -1,0 +1,49 @@
+# Week 1: run everything locally.  `docker compose up --build`
+x-svc-env: &svc-env
+  AUTH_MODE: local
+  LOCAL_JWT_SECRET: dev-only-secret
+  DATABASE_URL: postgresql://mediconnect:mediconnect@postgres:5432/mediconnect
+  AWS_DEFAULT_REGION: us-east-1
+  AWS_ACCESS_KEY_ID: test
+  AWS_SECRET_ACCESS_KEY: test
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment: { POSTGRES_USER: mediconnect, POSTGRES_PASSWORD: mediconnect, POSTGRES_DB: mediconnect }
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U mediconnect"], interval: 5s, retries: 10 }
+    volumes: [pgdata:/var/lib/postgresql/data]
+  redis:
+    image: redis:7-alpine
+  localstack:
+    image: localstack/localstack:3
+    environment: { SERVICES: "s3,sqs,ses" }
+    ports: ["4566:4566"]
+  auth-service:
+    build: ./services/auth-service
+    environment: *svc-env
+    ports: ["8001:8000"]
+  appointment-service:
+    build: ./services/appointment-service
+    environment:
+      <<: *svc-env
+      REDIS_URL: redis://redis:6379/0
+    depends_on: { postgres: { condition: service_healthy }, redis: { condition: service_started } }
+    ports: ["8002:8000"]
+  patient-records-service:
+    build: ./services/patient-records-service
+    environment:
+      <<: *svc-env
+      REPORTS_BUCKET: local-reports
+      S3_ENDPOINT_URL: http://localstack:4566
+    depends_on: { postgres: { condition: service_healthy }, localstack: { condition: service_started } }
+    ports: ["8003:8000"]
+  notification-service:
+    build: ./services/notification-service
+    environment: *svc-env
+    ports: ["8004:8000"]
+  frontend:
+    build: ./frontend
+    ports: ["3000:80"]
+volumes:
+  pgdata:

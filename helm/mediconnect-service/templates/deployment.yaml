@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.name }}
+  labels: {{- include "svc.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.hpa.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ .Values.name }}
+  strategy:
+    rollingUpdate: { maxUnavailable: 0, maxSurge: 1 }
+  template:
+    metadata:
+      labels: {{- include "svc.labels" . | nindent 8 }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "{{ .Values.port }}"
+        prometheus.io/path: /metrics
+    spec:
+      serviceAccountName: {{ .Values.name }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        seccompProfile: { type: RuntimeDefault }
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: {{ .Values.name }}
+      containers:
+        - name: app
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          ports: [{ containerPort: {{ .Values.port }} }]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          env:
+            {{- range $k, $v := .Values.env }}
+            - { name: {{ $k }}, value: {{ $v | quote }} }
+            {{- end }}
+            {{- range $k, $s := .Values.secretEnv }}
+            - name: {{ $k }}
+              valueFrom: { secretKeyRef: { name: {{ $s.secretName }}, key: {{ $s.key }} } }
+            {{- end }}
+          readinessProbe: { httpGet: { path: /health, port: {{ .Values.port }} }, periodSeconds: 5 }
+          livenessProbe:  { httpGet: { path: /health, port: {{ .Values.port }} }, initialDelaySeconds: 10, periodSeconds: 10 }
+          resources: {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts: [{ name: tmp, mountPath: /tmp }]
+      volumes: [{ name: tmp, emptyDir: {} }]

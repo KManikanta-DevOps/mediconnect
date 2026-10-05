@@ -1,0 +1,7 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata: { name: mediconnect, namespace: argocd }
+spec:
+  sourceRepos: ["https://github.com/YOUR_GH_USER/mediconnect.git"]
+  destinations: [{ namespace: mediconnect, server: https://kubernetes.default.svc }]
+  clusterResourceWhitelist: []

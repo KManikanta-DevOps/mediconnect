@@ -1,0 +1,31 @@
+# helm install kps prometheus-community/kube-prometheus-stack -n monitoring -f monitoring/prometheus/values.yaml
+alertmanager:
+  config:
+    route:
+      receiver: slack
+      group_by: [alertname]
+      routes:
+        - matchers: ['severity="page"']
+          receiver: slack
+    receivers:
+      - name: slack
+        slack_configs:
+          - api_url_file: /etc/alertmanager/secrets/slack-webhook/url
+            channel: "#mediconnect-alerts"
+            send_resolved: true
+  alertmanagerSpec:
+    secrets: [slack-webhook]
+grafana:
+  adminPassword: change-me-use-secret
+  sidecar: { dashboards: { enabled: true, label: grafana_dashboard } }
+prometheus:
+  prometheusSpec:
+    podMonitorSelectorNilUsesHelmValues: false
+    additionalScrapeConfigs:
+      - job_name: mediconnect-pods
+        kubernetes_sd_configs: [{ role: pod, namespaces: { names: [mediconnect] } }]
+        relabel_configs:
+          - { source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape], action: keep, regex: "true" }
+          - { source_labels: [__meta_kubernetes_pod_ip, __meta_kubernetes_pod_annotation_prometheus_io_port], action: replace, regex: "(.+);(.+)", replacement: "$1:$2", target_label: __address__ }
+          - { source_labels: [__meta_kubernetes_namespace], target_label: namespace }
+          - { source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name], target_label: service }

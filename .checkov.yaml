@@ -1,0 +1,6 @@
+framework: [terraform]
+quiet: true
+# Documented, intentional skips (explain each in docs/security.md):
+skip-check:
+  - CKV_AWS_144   # cross-region replication of reports bucket: out of scope for portfolio
+  - CKV_AWS_18    # access logging on audit bucket (would be a log bucket for a log bucket)

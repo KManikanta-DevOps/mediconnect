@@ -1,0 +1,18 @@
+{{- if .Values.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Values.name }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: {{ .Values.name }}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        {{- range .Values.networkPolicy.allowFromNamespaces }}
+        - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: {{ . }} } }
+        {{- end }}
+        - podSelector: { matchLabels: { app.kubernetes.io/part-of: mediconnect } }
+      ports: [{ port: {{ .Values.port }} }]
+{{- end }}

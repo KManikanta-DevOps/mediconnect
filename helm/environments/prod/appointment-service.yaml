@@ -1,0 +1,14 @@
+name: appointment-service
+image:
+  repository: ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/mediconnect/appointment-service
+  tag: latest
+serviceAccount: { roleArn: "arn:aws:iam::ACCOUNT_ID:role/mediconnect-dev-appointment" }
+env:
+  AWS_REGION: us-east-1
+  COGNITO_USER_POOL_ID: us-east-1_CHANGEME
+  COGNITO_CLIENT_ID: CHANGEME
+  REDIS_URL: rediss://REDIS_ENDPOINT:6379/0
+  REMINDER_QUEUE_URL: https://sqs.us-east-1.amazonaws.com/ACCOUNT_ID/mediconnect-dev-reminders
+secretEnv:
+  DATABASE_URL: { secretName: appointment-db, key: url }
+ingress: { enabled: true, host: dev.mediconnect.example.com, path: /appointments, certificateArn: "arn:aws:acm:..." }
