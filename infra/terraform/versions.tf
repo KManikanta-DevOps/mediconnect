@@ -5,11 +5,11 @@ terraform {
   }
   # Remote state: create bucket + lock table once with scripts/bootstrap-state.sh
   backend "s3" {
-    bucket         = "mediconnect-tfstate-CHANGE_ME"
-    key            = "mediconnect/terraform.tfstate"
-    region         = "us-east-1"
-    dynamodb_table = "mediconnect-tf-lock"
-    encrypt        = true
+    bucket       = "mediconnect-tfstate-419109630220"
+    key          = "mediconnect/terraform.tfstate"
+    region       = "ap-southeast-2"
+    use_lockfile = true
+    encrypt      = true
   }
 }
 

@@ -15,7 +15,7 @@ spec:
     spec:
       project: mediconnect
       source:
-        repoURL: https://github.com/YOUR_GH_USER/mediconnect.git
+        repoURL: https://github.com/KManikanta-DevOps/mediconnect.git
         targetRevision: main
         path: helm/mediconnect-service
         helm:

@@ -1,6 +1,6 @@
 name: auth-service
 image:
-  repository: ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/mediconnect/auth-service
+  repository: 419109630220.dkr.ecr.us-east-1.amazonaws.com/mediconnect/auth-service
   tag: latest
 env:
   AWS_REGION: us-east-1

@@ -2,8 +2,8 @@
 #   terraform workspace select -or-create dev
 #   terraform apply -var-file=envs/dev.tfvars
 locals {
-  env  = terraform.workspace
-  name = "mediconnect-${terraform.workspace}"
+  env      = terraform.workspace
+  name     = "mediconnect-${terraform.workspace}"
   services = ["auth-service", "appointment-service", "patient-records-service", "notification-service"]
 }
 
@@ -15,9 +15,9 @@ module "kms" {
 }
 
 module "vpc" {
-  source   = "./modules/vpc"
-  name     = local.name
-  cidr     = var.vpc_cidr
+  source     = "./modules/vpc"
+  name       = local.name
+  cidr       = var.vpc_cidr
   single_nat = local.env != "prod"
 }
 
@@ -34,15 +34,15 @@ module "eks" {
 }
 
 module "rds" {
-  source             = "./modules/rds"
-  name               = local.name
-  vpc_id             = module.vpc.vpc_id
-  subnet_ids         = module.vpc.database_subnets
-  allowed_sg_id      = module.eks.node_security_group_id
-  instance_class     = var.db_instance_class
-  multi_az           = var.db_multi_az
-  kms_key_arn        = module.kms.key_arn
-  backup_retention   = local.env == "prod" ? 14 : 7
+  source           = "./modules/rds"
+  name             = local.name
+  vpc_id           = module.vpc.vpc_id
+  subnet_ids       = module.vpc.database_subnets
+  allowed_sg_id    = module.eks.node_security_group_id
+  instance_class   = var.db_instance_class
+  multi_az         = var.db_multi_az
+  kms_key_arn      = module.kms.key_arn
+  backup_retention = local.env == "prod" ? 14 : 7
 }
 
 module "s3_reports" {
@@ -59,10 +59,10 @@ module "messaging" {
 }
 
 module "redis" {
-  source     = "./modules/redis"
-  name       = local.name
-  vpc_id     = module.vpc.vpc_id
-  subnet_ids = module.vpc.private_subnets
+  source        = "./modules/redis"
+  name          = local.name
+  vpc_id        = module.vpc.vpc_id
+  subnet_ids    = module.vpc.private_subnets
   allowed_sg_id = module.eks.node_security_group_id
 }
 
@@ -78,8 +78,8 @@ module "ecr" {
 }
 
 module "security" {
-  source = "./modules/security" # CloudTrail, AWS Config, GuardDuty
-  name   = local.name
+  source      = "./modules/security" # CloudTrail, AWS Config, GuardDuty
+  name        = local.name
   kms_key_arn = module.kms.key_arn
 }
 

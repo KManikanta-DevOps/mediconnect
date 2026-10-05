@@ -38,7 +38,11 @@ resource "aws_cloudtrail" "this" {
 resource "aws_guardduty_detector" "this" {
   enable = true
   datasources {
-    kubernetes { audit_logs { enable = true } }
+    kubernetes {
+  audit_logs {
+    enable = true
+  }
+}
     s3_logs { enable = true }
   }
 }

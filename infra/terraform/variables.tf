@@ -8,4 +8,4 @@ variable "db_instance_class" { default = "db.t4g.micro" }
 variable "db_multi_az" { default = false }
 variable "alert_email" { type = string }
 variable "ses_sender" { type = string }
-variable "github_repo" { default = "YOUR_GH_USER/mediconnect" }
+variable "github_repo" { default = "KManikanta-DevOps/mediconnect" }

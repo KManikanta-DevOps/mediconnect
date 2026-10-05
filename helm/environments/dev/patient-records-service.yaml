@@ -1,13 +1,13 @@
 name: patient-records-service
 image:
-  repository: ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/mediconnect/patient-records-service
+  repository: 419109630220.dkr.ecr.us-east-1.amazonaws.com/mediconnect/patient-records-service
   tag: latest
-serviceAccount: { roleArn: "arn:aws:iam::ACCOUNT_ID:role/mediconnect-dev-patient-records" }
+serviceAccount: { roleArn: "arn:aws:iam::419109630220:role/mediconnect-dev-patient-records" }
 env:
   AWS_REGION: us-east-1
   COGNITO_USER_POOL_ID: us-east-1_CHANGEME
   COGNITO_CLIENT_ID: CHANGEME
-  REPORTS_BUCKET: mediconnect-dev-reports-ACCOUNT_ID
+  REPORTS_BUCKET: mediconnect-dev-reports-419109630220
   KMS_KEY_ID: alias/mediconnect-dev
 secretEnv:
   DATABASE_URL: { secretName: records-db, key: url }
