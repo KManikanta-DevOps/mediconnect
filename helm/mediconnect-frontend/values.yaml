@@ -3,7 +3,7 @@ replicaCount: 2
 
 image:
   repository: 573844543866.dkr.ecr.us-east-1.amazonaws.com/mediconnect/frontend
-  tag: frontend-v2
+  tag: frontend-v3
 
 service:
   port: 80
