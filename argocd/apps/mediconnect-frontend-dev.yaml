@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: mediconnect-frontend-dev
+  namespace: argocd
+spec:
+  project: mediconnect
+  source:
+    repoURL: https://github.com/KManikanta-DevOps/mediconnect.git
+    targetRevision: main
+    path: helm/mediconnect-frontend
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: mediconnect
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

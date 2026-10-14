@@ -1,0 +1,6 @@
+apiVersion: v2
+name: mediconnect-frontend
+description: React frontend for MediConnect
+type: application
+version: 0.1.0
+appVersion: "frontend-v1"
