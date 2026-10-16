@@ -50,7 +50,7 @@ jobs:
           config_file: .checkov.yaml
 
   build-scan-push:
-    needs: [test, iac-scan]
+    needs: [test]
     runs-on: ubuntu-latest
     strategy:
       matrix:
