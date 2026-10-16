@@ -22,3 +22,20 @@ def test_book_and_conflict():
 def test_doctor_cannot_book():
     body = {"doctor_id": "d1", "starts_at": "2030-01-01T11:00:00"}
     assert client.post("/appointments", json=body, headers=hdr("doctor")).status_code == 403
+def test_admin_can_list_all_appointments():
+    response = client.get(
+        "/admin/appointments",
+        headers=hdr("admin", sub="admin1"),
+    )
+
+    assert response.status_code == 200
+    assert isinstance(response.json(), list)
+
+
+def test_patient_cannot_list_all_appointments():
+    response = client.get(
+        "/admin/appointments",
+        headers=hdr("patient", sub="patient1"),
+    )
+
+    assert response.status_code == 403

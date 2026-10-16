@@ -98,3 +98,25 @@ def list_mine(session: Session = Depends(db), user=Depends(current_user)):
     col = Appointment.doctor_id if user["role"] == "doctor" else Appointment.patient_id
     rows = session.scalars(select(Appointment).where(col == user["sub"]).order_by(Appointment.starts_at))
     return [{"id": a.id, "doctor_id": a.doctor_id, "starts_at": a.starts_at, "status": a.status} for a in rows]
+
+
+@app.get("/admin/appointments")
+def list_all_appointments(
+    session: Session = Depends(db),
+    user=Depends(require_role("admin")),
+):
+    rows = session.scalars(
+        select(Appointment).order_by(Appointment.starts_at)
+    )
+
+    return [
+        {
+            "id": a.id,
+            "patient_id": a.patient_id,
+            "patient_email": a.patient_email,
+            "doctor_id": a.doctor_id,
+            "starts_at": a.starts_at,
+            "status": a.status,
+        }
+        for a in rows
+    ]
