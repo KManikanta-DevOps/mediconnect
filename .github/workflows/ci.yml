@@ -146,3 +146,12 @@ jobs:
           git config user.email "ci-bot@users.noreply.github.com"
           git commit -am "ci: deploy ${{ github.sha }} to dev [skip ci]" || exit 0
           git push
+          
+      - name: Debug GitHub Actions context
+        if: github.ref == 'refs/heads/main'
+        run: |
+          echo "Repository: $GITHUB_REPOSITORY"
+          echo "Ref: $GITHUB_REF"
+          echo "Event: $GITHUB_EVENT_NAME"
+          echo "Actor: $GITHUB_ACTOR"
+
