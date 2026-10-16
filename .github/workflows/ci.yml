@@ -1,57 +1,106 @@
+
 name: ci
+
 on:
   pull_request:
-  push: { branches: [main] }
+  push:
+    branches:
+      - main
 
 permissions:
-  id-token: write   # OIDC to AWS
-  contents: write   # bump image tag in git
+  id-token: write
+  contents: write
   security-events: write
 
 env:
   AWS_REGION: us-east-1
 
 jobs:
+  # --------------------------------------------------
+  # 1. Test all microservices
+  # --------------------------------------------------
   test:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        service: [auth-service, appointment-service, patient-records-service, notification-service]
-    defaults: { run: { working-directory: "services/${{ matrix.service }}" } }
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: "3.12", cache: pip }
-      - run: pip install -r requirements.txt
-      - run: pytest -q
 
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - auth-service
+          - appointment-service
+          - patient-records-service
+          - notification-service
+
+    defaults:
+      run:
+        working-directory: services/${{ matrix.service }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: services/${{ matrix.service }}/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run tests
+        run: pytest -q
+
+  # --------------------------------------------------
+  # 2. SonarQube scan (optional)
+  # --------------------------------------------------
   sonar:
     runs-on: ubuntu-latest
     if: ${{ vars.SONAR_ENABLED == 'true' }}
+
     steps:
-      - uses: actions/checkout@v4
-        with: { fetch-depth: 0 }
-      - uses: SonarSource/sonarqube-scan-action@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: SonarQube scan
+        uses: SonarSource/sonarqube-scan-action@v3
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-      - uses: SonarSource/sonarqube-quality-gate-action@v1   # fails the build if the gate fails
-        timeout-minutes: 5
-        env: { SONAR_TOKEN: "${{ secrets.SONAR_TOKEN }}" }
 
+      - name: Check SonarQube quality gate
+        uses: SonarSource/sonarqube-quality-gate-action@v1
+        timeout-minutes: 5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  # --------------------------------------------------
+  # 3. Terraform infrastructure security scan
+  # --------------------------------------------------
   iac-scan:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: bridgecrewio/checkov-action@v12
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run Checkov
+        uses: bridgecrewio/checkov-action@v12
         with:
           directory: infra/terraform
           framework: terraform
           config_file: .checkov.yaml
 
-  
+  # --------------------------------------------------
+  # 4. Build, scan, authenticate to AWS, and push to ECR
+  # --------------------------------------------------
   build-scan-push:
-    needs: [test]
+    needs:
+      - test
+
     runs-on: ubuntu-latest
 
     permissions:
@@ -68,15 +117,18 @@ jobs:
           - notification-service
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
+      # Build the Docker image
       - name: Build image
         run: |
           docker build \
             -t local/${{ matrix.service }}:${{ github.sha }} \
             services/${{ matrix.service }}
 
-      - name: Trivy scan (fail on HIGH/CRITICAL)
+      # Scan image for HIGH and CRITICAL vulnerabilities
+      - name: Trivy scan
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: local/${{ matrix.service }}:${{ github.sha }}
@@ -84,6 +136,7 @@ jobs:
           ignore-unfixed: true
           exit-code: "1"
 
+      # Validate the configured role ARN without printing its value
       - name: Validate AWS role configuration
         if: github.ref == 'refs/heads/main'
         env:
@@ -95,13 +148,27 @@ jobs:
           fi
 
           case "$AWS_CI_ROLE_ARN" in
-            arn:aws:iam::*:role/*) echo "AWS role ARN format looks valid" ;;
+            arn:aws:iam::*:role/*)
+              echo "AWS role ARN format looks valid"
+              ;;
             *)
-              echo "::error::AWS_CI_ROLE_ARN is not a valid IAM role ARN format"
+              echo "::error::AWS_CI_ROLE_ARN does not match the expected IAM role ARN format"
               exit 1
               ;;
           esac
 
+      # Print non-secret context to diagnose OIDC trust-policy mismatches
+      - name: Debug GitHub Actions context
+        if: github.ref == 'refs/heads/main'
+        run: |
+          echo "Repository: $GITHUB_REPOSITORY"
+          echo "Ref: $GITHUB_REF"
+          echo "Event: $GITHUB_EVENT_NAME"
+          echo "Actor: $GITHUB_ACTOR"
+          echo "Workflow: $GITHUB_WORKFLOW"
+          echo "Job: $GITHUB_JOB"
+
+      # Request temporary AWS credentials using GitHub OIDC
       - name: Configure AWS credentials (OIDC)
         if: github.ref == 'refs/heads/main'
         uses: aws-actions/configure-aws-credentials@v4
@@ -110,15 +177,18 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
           role-session-name: GitHubActions-${{ github.run_id }}
 
+      # Confirm that AWS authentication succeeded
       - name: Verify AWS identity
         if: github.ref == 'refs/heads/main'
         run: aws sts get-caller-identity
 
+      # Authenticate Docker to Amazon ECR
       - name: Login to Amazon ECR
         if: github.ref == 'refs/heads/main'
         id: ecr
         uses: aws-actions/amazon-ecr-login@v2
 
+      # Tag and push the image
       - name: Push image to ECR
         if: github.ref == 'refs/heads/main'
         env:
@@ -127,31 +197,46 @@ jobs:
           IMAGE_TAG: ${{ github.sha }}
         run: |
           IMAGE="$REGISTRY/mediconnect/$SERVICE:$IMAGE_TAG"
+
           docker tag "local/$SERVICE:$IMAGE_TAG" "$IMAGE"
           docker push "$IMAGE"
 
-
+  # --------------------------------------------------
+  # 5. Update GitOps Helm values after all image jobs pass
+  # --------------------------------------------------
   gitops-bump:
-    needs: build-scan-push
+    needs:
+      - build-scan-push
+
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Bump image tags in Helm values (Argo CD picks it up)
-        run: |
-          for f in helm/environments/dev/*.yaml; do
-            sed -i "s|^  tag: .*|  tag: ${{ github.sha }}|" "$f"
-          done
-          git config user.name  "ci-bot"
-          git config user.email "ci-bot@users.noreply.github.com"
-          git commit -am "ci: deploy ${{ github.sha }} to dev [skip ci]" || exit 0
-          git push
-          
-      - name: Debug GitHub Actions context
-        if: github.ref == 'refs/heads/main'
-        run: |
-          echo "Repository: $GITHUB_REPOSITORY"
-          echo "Ref: $GITHUB_REF"
-          echo "Event: $GITHUB_EVENT_NAME"
-          echo "Actor: $GITHUB_ACTOR"
 
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Bump image tags in Helm values
+        run: |
+          set -e
+
+          for f in helm/environments/dev/*.yaml; do
+            if [ -f "$f" ]; then
+              sed -i "s|^  tag: .*|  tag: ${{ github.sha }}|" "$f"
+            fi
+          done
+
+          git config user.name "ci-bot"
+          git config user.email "ci-bot@users.noreply.github.com"
+
+          git add helm/environments/dev/
+
+          if git diff --cached --quiet; then
+            echo "No Helm image-tag changes to commit."
+            exit 0
+          fi
+
+          git commit -m "ci: deploy ${{ github.sha }} to dev [skip ci]"
+          git push
