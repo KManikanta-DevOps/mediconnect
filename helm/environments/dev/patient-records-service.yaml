@@ -1,7 +1,7 @@
 name: patient-records-service
 image:
   repository: 573844543866.dkr.ecr.us-east-1.amazonaws.com/mediconnect/patient-records-service
-  tag: a01fac6
+  tag: 03cab7e5aad2c4d8d1bbb9b782b4060efc316d49
 serviceAccount: { roleArn: "arn:aws:iam::573844543866:role/mediconnect-dev-patient-records" }
 env:
   AWS_REGION: us-east-1

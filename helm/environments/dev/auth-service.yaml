@@ -1,7 +1,7 @@
 name: auth-service
 image:
   repository: 573844543866.dkr.ecr.us-east-1.amazonaws.com/mediconnect/auth-service
-  tag: a01fac6
+  tag: 03cab7e5aad2c4d8d1bbb9b782b4060efc316d49
 env:
   AWS_REGION: us-east-1
   COGNITO_USER_POOL_ID: us-east-1_qFRwJvM2Q
