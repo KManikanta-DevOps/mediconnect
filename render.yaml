@@ -5,7 +5,7 @@ services:
     name: mediconnect-demo-auth-api
     runtime: docker
     plan: free
-    region: singapore
+    region: ohio
     branch: free-demo-migration
     dockerfilePath: ./services/auth-service/Dockerfile
     dockerContext: ./services/auth-service
@@ -17,7 +17,7 @@ services:
     name: mediconnect-demo-appointments-api
     runtime: docker
     plan: free
-    region: singapore
+    region: ohio
     branch: free-demo-migration
     dockerfilePath: ./services/appointment-service/Dockerfile
     dockerContext: ./services/appointment-service
@@ -31,7 +31,7 @@ services:
     name: mediconnect-demo-records-api
     runtime: docker
     plan: free
-    region: singapore
+    region: ohio
     branch: free-demo-migration
     dockerfilePath: ./services/patient-records-service/Dockerfile
     dockerContext: ./services/patient-records-service
