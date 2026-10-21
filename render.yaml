@@ -1,0 +1,77 @@
+# Free demo deployment. Uses Neon PostgreSQL and Render free services.
+# This is a demonstration only: do not use real patient data.
+services:
+  - type: web
+    name: mediconnect-demo-auth-api
+    runtime: docker
+    plan: free
+    region: singapore
+    branch: free-demo-migration
+    dockerfilePath: ./services/auth-service/Dockerfile
+    dockerContext: ./services/auth-service
+    healthCheckPath: /health
+    envVars:
+      - fromGroup: mediconnect-demo-shared
+      - key: AUTH_MODE
+        value: local
+      - key: LOCAL_JWT_SECRET
+        sync: false
+
+  - type: web
+    name: mediconnect-demo-appointments-api
+    runtime: docker
+    plan: free
+    region: singapore
+    branch: free-demo-migration
+    dockerfilePath: ./services/appointment-service/Dockerfile
+    dockerContext: ./services/appointment-service
+    healthCheckPath: /health
+    envVars:
+      - fromGroup: mediconnect-demo-shared
+      - key: AUTH_MODE
+        value: local
+      - key: LOCAL_JWT_SECRET
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+
+  - type: web
+    name: mediconnect-demo-records-api
+    runtime: docker
+    plan: free
+    region: singapore
+    branch: free-demo-migration
+    dockerfilePath: ./services/patient-records-service/Dockerfile
+    dockerContext: ./services/patient-records-service
+    healthCheckPath: /health
+    envVars:
+      - fromGroup: mediconnect-demo-shared
+      - key: AUTH_MODE
+        value: local
+      - key: LOCAL_JWT_SECRET
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+
+  - type: web
+    name: mediconnect-demo-web
+    runtime: static
+    branch: free-demo-migration
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_AUTH_API_URL
+        value: https://mediconnect-demo-auth-api.onrender.com
+      - key: VITE_APPOINTMENTS_API_URL
+        value: https://mediconnect-demo-appointments-api.onrender.com
+      - key: VITE_RECORDS_API_URL
+        value: https://mediconnect-demo-records-api.onrender.com
+
+envVarGroups:
+  - name: mediconnect-demo-shared
+    envVars:
+      - key: AUTH_MODE
+        value: local
+      - key: LOCAL_JWT_SECRET
+        generateValue: true
