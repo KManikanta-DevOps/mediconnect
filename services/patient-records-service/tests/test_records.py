@@ -1,28 +1,42 @@
 import os
+
 os.environ["AUTH_MODE"] = "local"
 os.environ["DATABASE_URL"] = "sqlite:///./test.db"
-os.environ.setdefault("AWS_DEFAULT_REGION", "us-east-1")
-os.environ.setdefault("AWS_ACCESS_KEY_ID", "x")
-os.environ.setdefault("AWS_SECRET_ACCESS_KEY", "x")
+
 import jwt
 from fastapi.testclient import TestClient
+
 from app.main import app
 
 client = TestClient(app)
 
 
 def hdr(role="patient", sub="p1"):
-    t = jwt.encode({"sub": sub, "role": role}, "dev-only-secret", algorithm="HS256")
-    return {"Authorization": f"Bearer {t}"}
+    token = jwt.encode({"sub": sub, "role": role}, "dev-only-secret", algorithm="HS256")
+    return {"Authorization": f"Bearer {token}"}
 
 
-def test_upload_url_and_list():
-    r = client.post("/records/upload-url", json={"title": "Blood test"}, headers=hdr())
-    assert r.status_code == 201 and r.json()["key"].startswith("p1/")
+def pdf_file(name="report.pdf"):
+    return {"file": (name, b"%PDF-1.4\nDemo report\n%%EOF", "application/pdf")}
+
+
+def test_upload_and_list():
+    response = client.post("/records/upload-url", files=pdf_file(), headers=hdr())
+    assert response.status_code == 201
+    assert response.json()["key"].startswith("p1/")
     assert len(client.get("/records", headers=hdr()).json()) >= 1
 
 
 def test_patient_only_sees_own():
-    client.post("/records/upload-url", json={"title": "x"}, headers=hdr(sub="p9"))
+    client.post("/records/upload-url", files=pdf_file("other.pdf"), headers=hdr(sub="p9"))
     mine = client.get("/records?patient_id=p9", headers=hdr(sub="p1")).json()
-    assert not any(t["key"].startswith("p9/") for t in mine)
+    assert not any(item["key"].startswith("p9/") for item in mine)
+
+
+def test_rejects_non_pdf():
+    response = client.post(
+        "/records/upload-url",
+        files={"file": ("notes.txt", b"not a pdf", "text/plain")},
+        headers=hdr(),
+    )
+    assert response.status_code == 415
