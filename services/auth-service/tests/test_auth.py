@@ -11,9 +11,9 @@ def test_health():
 
 
 def test_login_and_me():
-    token = client.post("/auth/dev-login", json={"email": "a@b.com", "role": "doctor"}).json()["access_token"]
+    token = client.post("/auth/dev-login", json={"email": "a@b.com", "role": "patient"}).json()["access_token"]
     r = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
-    assert r.status_code == 200 and r.json()["role"] == "doctor"
+    assert r.status_code == 200 and r.json()["role"] == "patient"
 
 
 def test_me_requires_token():
