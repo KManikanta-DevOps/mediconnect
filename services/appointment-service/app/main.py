@@ -5,6 +5,7 @@ import os
 import boto3
 import redis
 from fastapi import Depends, FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel
 from sqlalchemy import Column, DateTime, Integer, String, UniqueConstraint, create_engine, select
@@ -36,6 +37,13 @@ class Appointment(Base):
 
 Base.metadata.create_all(engine)
 app = FastAPI(title="appointment-service")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 Instrumentator().instrument(app).expose(app)
 
 
@@ -81,6 +89,7 @@ def book(body: BookIn, session: Session = Depends(db), user=Depends(require_role
     session.add(appt)
     try:
         session.commit()
+        session.refresh(appt)
     except Exception:
         session.rollback()
         raise HTTPException(409, "Slot already booked")
@@ -105,10 +114,7 @@ def list_all_appointments(
     session: Session = Depends(db),
     user=Depends(require_role("admin")),
 ):
-    rows = session.scalars(
-        select(Appointment).order_by(Appointment.starts_at)
-    )
-
+    rows = session.scalars(select(Appointment).order_by(Appointment.starts_at))
     return [
         {
             "id": a.id,

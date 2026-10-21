@@ -1,38 +1,34 @@
 import { useState } from "react";
-import {
-  CognitoUser,
-  CognitoUserPool,
-  AuthenticationDetails,
-} from "amazon-cognito-identity-js";
 
-const pool = new CognitoUserPool({
-  UserPoolId: import.meta.env.VITE_COGNITO_USER_POOL_ID,
-  ClientId: import.meta.env.VITE_COGNITO_CLIENT_ID,
-});
+const AUTH_API_URL = import.meta.env.VITE_AUTH_API_URL || "";
+const APPOINTMENTS_API_URL = import.meta.env.VITE_APPOINTMENTS_API_URL || "";
+const RECORDS_API_URL = import.meta.env.VITE_RECORDS_API_URL || "";
 
 const api = (token) => async (path, opts = {}) => {
-  const res = await fetch(path, {
-    ...opts,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token && { Authorization: `Bearer ${token}` }),
-      ...opts.headers,
-    },
-  });
-
+  const base = path.startsWith("/auth")
+    ? AUTH_API_URL
+    : path.startsWith("/appointments")
+      ? APPOINTMENTS_API_URL
+      : path.startsWith("/records")
+        ? RECORDS_API_URL
+        : "";
+  const isForm = typeof FormData !== "undefined" && opts.body instanceof FormData;
+  const headers = {
+    ...(!isForm && opts.body ? { "Content-Type": "application/json" } : {}),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...opts.headers,
+  };
+  const res = await fetch(`${base}${path}`, { ...opts, headers });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.detail || body.message || res.statusText);
   }
-
   return res.json();
 };
 
 export default function App() {
   const [token, setToken] = useState(null);
-  const [role, setRole] = useState("patient");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [appts, setAppts] = useState([]);
   const [doctor, setDoctor] = useState("dr-lee");
   const [when, setWhen] = useState("");
@@ -41,45 +37,26 @@ export default function App() {
 
   const call = api(token);
 
-  const login = (e) => {
+  const login = async (e) => {
     e.preventDefault();
     setMsg("");
     setBusy(true);
-
-    const user = new CognitoUser({
-      Username: email.trim(),
-      Pool: pool,
-    });
-
-    const authDetails = new AuthenticationDetails({
-      Username: email.trim(),
-      Password: password,
-    });
-
-    user.authenticateUser(authDetails, {
-      onSuccess: (session) => {
-        setToken(session.getIdToken().getJwtToken());
-        setBusy(false);
-        setMsg("Signed in successfully.");
-      },
-      onFailure: (err) => {
-        setMsg(err.message || "Sign-in failed.");
-        setBusy(false);
-      },
-      newPasswordRequired: () => {
-        setMsg(
-          "Your account requires a new password. Complete the password-change step before signing in."
-        );
-        setBusy(false);
-      },
-    });
+    try {
+      const result = await api(null)("/auth/dev-login", {
+        method: "POST",
+        body: JSON.stringify({ email: email.trim(), role: "patient" }),
+      });
+      setToken(result.access_token);
+      setMsg("Demo sign-in successful. Use a test email only.");
+    } catch (err) {
+      setMsg(err.message || "Sign-in failed.");
+    } finally {
+      setBusy(false);
+    }
   };
 
   const logout = () => {
-    const user = pool.getCurrentUser();
-    if (user) user.signOut();
     setToken(null);
-    setPassword("");
     setAppts([]);
     setMsg("Signed out.");
   };
@@ -98,10 +75,7 @@ export default function App() {
     try {
       await call("/appointments", {
         method: "POST",
-        body: JSON.stringify({
-          doctor_id: doctor,
-          starts_at: when,
-        }),
+        body: JSON.stringify({ doctor_id: doctor, starts_at: when }),
       });
       setMsg("Appointment booked.");
       await load();
@@ -113,26 +87,17 @@ export default function App() {
   const upload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     try {
       if (file.type !== "application/pdf") {
         throw new Error("Please select a PDF file.");
       }
-
-      const { url } = await call("/records/upload-url", {
+      const form = new FormData();
+      form.append("file", file);
+      const result = await call("/records/upload-url", {
         method: "POST",
-        body: JSON.stringify({ title: file.name }),
+        body: form,
       });
-
-      const result = await fetch(url, {
-        method: "PUT",
-        body: file,
-        headers: { "Content-Type": "application/pdf" },
-      });
-
-      if (!result.ok) throw new Error("Report upload failed.");
-
-      setMsg(`Uploaded ${file.name}.`);
+      setMsg(`Uploaded ${result.title} (report #${result.id}).`);
     } catch (err) {
       setMsg(err.message);
     } finally {
@@ -144,36 +109,23 @@ export default function App() {
     return (
       <main className="shell">
         <h1>MediConnect</h1>
-        <p>Sign in with your MediConnect account.</p>
-
+        <p>Public demo environment — do not enter real patient information.</p>
         <form onSubmit={login} className="stack">
           <label>
-            Email
+            Demo email
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              autoComplete="username"
+              autoComplete="email"
+              placeholder="demo@example.com"
               required
             />
           </label>
-
-          <label>
-            Password
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
-              required
-            />
-          </label>
-
           <button disabled={busy}>
-            {busy ? "Signing in..." : "Sign in"}
+            {busy ? "Signing in..." : "Continue to demo"}
           </button>
         </form>
-
         <p role="status">{msg}</p>
       </main>
     );
@@ -181,23 +133,17 @@ export default function App() {
 
   return (
     <main className="shell">
-      <h1>Your MediConnect</h1>
-      <button className="ghost" onClick={logout}>
-        Sign out
-      </button>
-
-      <button className="ghost" onClick={load}>
-        Refresh appointments
-      </button>
+      <h1>Your MediConnect Demo</h1>
+      <p>Use fictional data only. Demo sessions expire after one hour.</p>
+      <button className="ghost" onClick={logout}>Sign out</button>
+      <button className="ghost" onClick={load}>Refresh appointments</button>
 
       <ul className="list">
-        {appts.length === 0 && (
-          <li className="empty">No appointments loaded yet.</li>
-        )}
+        {appts.length === 0 && <li className="empty">No appointments loaded yet.</li>}
         {appts.map((a) => (
           <li key={a.id}>
-            <b>{new Date(a.starts_at).toLocaleString()}</b>
-            {" "}with {a.doctor_id} ({a.status})
+            <b>{new Date(a.starts_at).toLocaleString()}</b>{" "}
+            with {a.doctor_id} ({a.status})
           </li>
         ))}
       </ul>
@@ -206,13 +152,8 @@ export default function App() {
       <form onSubmit={book} className="stack">
         <label>
           Doctor
-          <input
-            value={doctor}
-            onChange={(e) => setDoctor(e.target.value)}
-            required
-          />
+          <input value={doctor} onChange={(e) => setDoctor(e.target.value)} required />
         </label>
-
         <label>
           Date and time
           <input
@@ -222,17 +163,12 @@ export default function App() {
             required
           />
         </label>
-
         <button>Book appointment</button>
       </form>
 
-      <h2>Upload a report</h2>
-      <input
-        type="file"
-        accept="application/pdf"
-        onChange={upload}
-      />
-
+      <h2>Upload a sample report</h2>
+      <p>PDF only, maximum 5 MB. Files are stored in the Neon demo database.</p>
+      <input type="file" accept="application/pdf" onChange={upload} />
       <p role="status">{msg}</p>
     </main>
   );
