@@ -12,10 +12,6 @@ services:
     healthCheckPath: /health
     envVars:
       - fromGroup: mediconnect-demo-shared
-      - key: AUTH_MODE
-        value: local
-      - key: LOCAL_JWT_SECRET
-        sync: false
 
   - type: web
     name: mediconnect-demo-appointments-api
@@ -28,10 +24,6 @@ services:
     healthCheckPath: /health
     envVars:
       - fromGroup: mediconnect-demo-shared
-      - key: AUTH_MODE
-        value: local
-      - key: LOCAL_JWT_SECRET
-        sync: false
       - key: DATABASE_URL
         sync: false
 
@@ -46,10 +38,6 @@ services:
     healthCheckPath: /health
     envVars:
       - fromGroup: mediconnect-demo-shared
-      - key: AUTH_MODE
-        value: local
-      - key: LOCAL_JWT_SECRET
-        sync: false
       - key: DATABASE_URL
         sync: false
 
